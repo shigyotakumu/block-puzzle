@@ -909,7 +909,7 @@ function calcAnchorSafe(hitR, hitC, shape) {
 
 // 相対移動でanchorを更新する共通処理
 function applyMoveDelta(dx, dy) {
-    const step = window.innerWidth < 580 ? 25 : 30;
+    const step = window.innerWidth < 580 ? 20 : 30;
     drag.accumX = (drag.accumX || 0) + dx;
     drag.accumY = (drag.accumY || 0) + dy;
     const cellDX = Math.trunc(drag.accumX / step);
