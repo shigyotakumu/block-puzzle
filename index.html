@@ -907,6 +907,27 @@ function calcAnchorSafe(hitR, hitC, shape) {
     return { anchorR, anchorC };
 }
 
+// 相対移動でanchorを更新する共通処理
+function applyMoveDelta(dx, dy) {
+    const step = CELL + GAP;
+    const { maxR, maxC } = bounds(drag.piece.shape);
+    drag.accumX = (drag.accumX || 0) + dx;
+    drag.accumY = (drag.accumY || 0) + dy;
+    const cellDX = Math.trunc(drag.accumX / step);
+    const cellDY = Math.trunc(drag.accumY / step);
+    if (cellDX !== 0 || cellDY !== 0) {
+        drag.accumX -= cellDX * step;
+        drag.accumY -= cellDY * step;
+        const newR = Math.max(0, Math.min(SIZE - 1 - maxR, drag.anchorR + cellDY));
+        const newC = Math.max(0, Math.min(SIZE - 1 - maxC, drag.anchorC + cellDX));
+        if (newR !== drag.anchorR || newC !== drag.anchorC) {
+            drag.anchorR = newR;
+            drag.anchorC = newC;
+            renderBoard(drag.piece.shape, drag.anchorR, drag.anchorC);
+        }
+    }
+}
+
 // ── Mouse events ──
 function onMouseDown(e, idx) {
     const piece = candidates[idx];
@@ -914,7 +935,7 @@ function onMouseDown(e, idx) {
     e.preventDefault();
     const nearest = nearestBoardCell(e.clientX, e.clientY);
     const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, piece.shape);
-    drag = { piece, idx, anchorR, anchorC };
+    drag = { piece, idx, anchorR, anchorC, lastMX: e.clientX, lastMY: e.clientY, accumX: 0, accumY: 0 };
     buildGhost(piece);
     renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(e.clientX, e.clientY);
@@ -923,16 +944,9 @@ function onMouseDown(e, idx) {
 
 document.addEventListener('mousemove', e => {
     if (!drag) return;
-    const hit = cellAt(e.clientX, e.clientY);
-    let anchorR = null, anchorC = null;
-    if (hit) {
-        ({ anchorR, anchorC } = calcAnchor(hit.r, hit.c, drag.piece.shape));
-    }
-    if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
-        drag.anchorR = anchorR;
-        drag.anchorC = anchorC;
-        renderBoard(anchorR !== null ? drag.piece.shape : null, anchorR, anchorC);
-    }
+    applyMoveDelta(e.clientX - drag.lastMX, e.clientY - drag.lastMY);
+    drag.lastMX = e.clientX;
+    drag.lastMY = e.clientY;
     positionGhost(e.clientX, e.clientY);
 });
 
@@ -947,10 +961,9 @@ function onTouchStart(e, idx) {
     if (piece.used || isAnimating) return;
     e.preventDefault();
     const touch = e.touches[0];
-    // タッチ位置に最も近いボードマスにゴーストをスポーン
     const nearest = nearestBoardCell(touch.clientX, touch.clientY);
     const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, piece.shape);
-    drag = { piece, idx, anchorR, anchorC };
+    drag = { piece, idx, anchorR, anchorC, lastMX: touch.clientX, lastMY: touch.clientY, accumX: 0, accumY: 0 };
     buildGhost(piece);
     renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(touch.clientX, touch.clientY);
@@ -960,14 +973,9 @@ document.addEventListener('touchmove', e => {
     if (!drag) return;
     e.preventDefault();
     const touch = e.touches[0];
-    // 常に最近傍マスにスナップ（ボード外でもクランプして追従）
-    const nearest = nearestBoardCell(touch.clientX, touch.clientY);
-    const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, drag.piece.shape);
-    if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
-        drag.anchorR = anchorR;
-        drag.anchorC = anchorC;
-        renderBoard(drag.piece.shape, anchorR, anchorC);
-    }
+    applyMoveDelta(touch.clientX - drag.lastMX, touch.clientY - drag.lastMY);
+    drag.lastMX = touch.clientX;
+    drag.lastMY = touch.clientY;
     positionGhost(touch.clientX, touch.clientY);
 }, { passive: false });
 
