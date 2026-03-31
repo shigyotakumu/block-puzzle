@@ -947,7 +947,11 @@ function onTouchStart(e, idx) {
     // タッチ位置に最も近いボードマスにゴーストをスポーン
     const nearest = nearestBoardCell(touch.clientX, touch.clientY);
     const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, piece.shape);
-    drag = { piece, idx, anchorR, anchorC };
+    drag = {
+        piece, idx, anchorR, anchorC,
+        lastTX: touch.clientX, lastTY: touch.clientY, // 相対移動の基点
+        accumX: 0, accumY: 0,                          // サブセル蓄積量
+    };
     buildGhost(piece);
     renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(touch.clientX, touch.clientY);
@@ -957,13 +961,28 @@ document.addEventListener('touchmove', e => {
     if (!drag) return;
     e.preventDefault();
     const touch = e.touches[0];
-    // 常に最近傍マスにスナップ（ボード外でもクランプして追従）
-    const nearest = nearestBoardCell(touch.clientX, touch.clientY);
-    const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, drag.piece.shape);
-    if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
-        drag.anchorR = anchorR;
-        drag.anchorC = anchorC;
-        renderBoard(drag.piece.shape, anchorR, anchorC);
+    const step = CELL + GAP;
+    const { maxR, maxC } = bounds(drag.piece.shape);
+
+    // 前フレームからの差分を蓄積し、1マス分超えたら動かす
+    drag.accumX += touch.clientX - drag.lastTX;
+    drag.accumY += touch.clientY - drag.lastTY;
+    drag.lastTX = touch.clientX;
+    drag.lastTY = touch.clientY;
+
+    const cellDX = Math.trunc(drag.accumX / step);
+    const cellDY = Math.trunc(drag.accumY / step);
+
+    if (cellDX !== 0 || cellDY !== 0) {
+        drag.accumX -= cellDX * step;
+        drag.accumY -= cellDY * step;
+        const newR = Math.max(0, Math.min(SIZE - 1 - maxR, drag.anchorR + cellDY));
+        const newC = Math.max(0, Math.min(SIZE - 1 - maxC, drag.anchorC + cellDX));
+        if (newR !== drag.anchorR || newC !== drag.anchorC) {
+            drag.anchorR = newR;
+            drag.anchorC = newC;
+            renderBoard(drag.piece.shape, drag.anchorR, drag.anchorC);
+        }
     }
     positionGhost(touch.clientX, touch.clientY);
 }, { passive: false });
