@@ -901,14 +901,14 @@ function onMouseDown(e, idx) {
 document.addEventListener('mousemove', e => {
     if (!drag) return;
     const hit = cellAt(e.clientX, e.clientY);
-    // ボード上にいるときだけ anchor を更新。外に出ても最後の位置をキープ
+    let anchorR = null, anchorC = null;
     if (hit) {
-        const { anchorR, anchorC } = calcAnchor(hit.r, hit.c, drag.piece.shape);
-        if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
-            drag.anchorR = anchorR;
-            drag.anchorC = anchorC;
-            renderBoard(drag.piece.shape, anchorR, anchorC);
-        }
+        ({ anchorR, anchorC } = calcAnchor(hit.r, hit.c, drag.piece.shape));
+    }
+    if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
+        drag.anchorR = anchorR;
+        drag.anchorC = anchorC;
+        renderBoard(anchorR !== null ? drag.piece.shape : null, anchorR, anchorC);
     }
     positionGhost(e.clientX, e.clientY);
 });
@@ -934,14 +934,14 @@ document.addEventListener('touchmove', e => {
     e.preventDefault();
     const touch = e.touches[0];
     const hit = cellAt(touch.clientX, touch.clientY);
-    // ボード上にいるときだけ anchor を更新。外に出ても最後の位置をキープ
+    let anchorR = null, anchorC = null;
     if (hit) {
-        const { anchorR, anchorC } = calcAnchor(hit.r, hit.c, drag.piece.shape);
-        if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
-            drag.anchorR = anchorR;
-            drag.anchorC = anchorC;
-            renderBoard(drag.piece.shape, anchorR, anchorC);
-        }
+        ({ anchorR, anchorC } = calcAnchor(hit.r, hit.c, drag.piece.shape));
+    }
+    if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
+        drag.anchorR = anchorR;
+        drag.anchorC = anchorC;
+        renderBoard(anchorR !== null ? drag.piece.shape : null, anchorR, anchorC);
     }
     positionGhost(touch.clientX, touch.clientY);
 }, { passive: false });
