@@ -912,8 +912,11 @@ function onMouseDown(e, idx) {
     const piece = candidates[idx];
     if (piece.used || isAnimating) return;
     e.preventDefault();
-    drag = { piece, idx, anchorR: null, anchorC: null };
+    const nearest = nearestBoardCell(e.clientX, e.clientY);
+    const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, piece.shape);
+    drag = { piece, idx, anchorR, anchorC };
     buildGhost(piece);
+    renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(e.clientX, e.clientY);
     document.body.style.cursor = 'grabbing';
 }
