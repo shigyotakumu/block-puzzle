@@ -887,6 +887,26 @@ function calcAnchor(hitR, hitC, shape) {
     };
 }
 
+// 画面座標 → 最も近いボードのマス（範囲外はクランプ）
+function nearestBoardCell(x, y) {
+    const ref = cells[0][0].getBoundingClientRect();
+    const step = CELL + GAP;
+    const col = Math.round((x - ref.left - CELL / 2) / step);
+    const row = Math.round((y - ref.top  - CELL / 2) / step);
+    return {
+        r: Math.max(0, Math.min(SIZE - 1, row)),
+        c: Math.max(0, Math.min(SIZE - 1, col)),
+    };
+}
+
+// ピースがボードからはみ出さないようにクランプしたanchor
+function calcAnchorSafe(hitR, hitC, shape) {
+    const { maxR, maxC } = bounds(shape);
+    const anchorR = Math.max(0, Math.min(SIZE - 1 - maxR, hitR - Math.round(maxR / 2)));
+    const anchorC = Math.max(0, Math.min(SIZE - 1 - maxC, hitC - Math.round(maxC / 2)));
+    return { anchorR, anchorC };
+}
+
 // ── Mouse events ──
 function onMouseDown(e, idx) {
     const piece = candidates[idx];
@@ -924,8 +944,12 @@ function onTouchStart(e, idx) {
     if (piece.used || isAnimating) return;
     e.preventDefault();
     const touch = e.touches[0];
-    drag = { piece, idx, anchorR: null, anchorC: null };
+    // タッチ位置に最も近いボードマスにゴーストをスポーン
+    const nearest = nearestBoardCell(touch.clientX, touch.clientY);
+    const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, piece.shape);
+    drag = { piece, idx, anchorR, anchorC };
     buildGhost(piece);
+    renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(touch.clientX, touch.clientY);
 }
 
@@ -933,15 +957,13 @@ document.addEventListener('touchmove', e => {
     if (!drag) return;
     e.preventDefault();
     const touch = e.touches[0];
-    const hit = cellAt(touch.clientX, touch.clientY);
-    let anchorR = null, anchorC = null;
-    if (hit) {
-        ({ anchorR, anchorC } = calcAnchor(hit.r, hit.c, drag.piece.shape));
-    }
+    // 常に最近傍マスにスナップ（ボード外でもクランプして追従）
+    const nearest = nearestBoardCell(touch.clientX, touch.clientY);
+    const { anchorR, anchorC } = calcAnchorSafe(nearest.r, nearest.c, drag.piece.shape);
     if (anchorR !== drag.anchorR || anchorC !== drag.anchorC) {
         drag.anchorR = anchorR;
         drag.anchorC = anchorC;
-        renderBoard(anchorR !== null ? drag.piece.shape : null, anchorR, anchorC);
+        renderBoard(drag.piece.shape, anchorR, anchorC);
     }
     positionGhost(touch.clientX, touch.clientY);
 }, { passive: false });
