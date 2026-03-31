@@ -910,7 +910,6 @@ function calcAnchorSafe(hitR, hitC, shape) {
 // 相対移動でanchorを更新する共通処理
 function applyMoveDelta(dx, dy) {
     const step = CELL + GAP;
-    const { maxR, maxC } = bounds(drag.piece.shape);
     drag.accumX = (drag.accumX || 0) + dx;
     drag.accumY = (drag.accumY || 0) + dy;
     const cellDX = Math.trunc(drag.accumX / step);
@@ -918,8 +917,8 @@ function applyMoveDelta(dx, dy) {
     if (cellDX !== 0 || cellDY !== 0) {
         drag.accumX -= cellDX * step;
         drag.accumY -= cellDY * step;
-        const newR = Math.max(0, Math.min(SIZE - 1 - maxR, drag.anchorR + cellDY));
-        const newC = Math.max(0, Math.min(SIZE - 1 - maxC, drag.anchorC + cellDX));
+        const newR = drag.anchorR + cellDY;
+        const newC = drag.anchorC + cellDX;
         if (newR !== drag.anchorR || newC !== drag.anchorC) {
             drag.anchorR = newR;
             drag.anchorC = newC;
