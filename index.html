@@ -887,13 +887,34 @@ function calcAnchor(hitR, hitC, shape) {
     };
 }
 
+// 選択時にボード近くにスポーン
+function getSpawnAnchor(shape) {
+    const { maxR, maxC } = bounds(shape);
+    const isMobile = window.innerWidth < 580;
+    if (isMobile) {
+        // 携帯: ボード下端・中央横
+        return {
+            anchorR: SIZE - 1 - maxR,
+            anchorC: Math.round((SIZE - 1 - maxC) / 2),
+        };
+    } else {
+        // PC: ボード右端・中央縦
+        return {
+            anchorR: Math.round((SIZE - 1 - maxR) / 2),
+            anchorC: SIZE - 1 - maxC,
+        };
+    }
+}
+
 // ── Mouse events ──
 function onMouseDown(e, idx) {
     const piece = candidates[idx];
     if (piece.used || isAnimating) return;
     e.preventDefault();
-    drag = { piece, idx, anchorR: null, anchorC: null };
+    const { anchorR, anchorC } = getSpawnAnchor(piece.shape);
+    drag = { piece, idx, anchorR, anchorC };
     buildGhost(piece);
+    renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(e.clientX, e.clientY);
     document.body.style.cursor = 'grabbing';
 }
@@ -924,8 +945,10 @@ function onTouchStart(e, idx) {
     if (piece.used || isAnimating) return;
     e.preventDefault();
     const touch = e.touches[0];
-    drag = { piece, idx, anchorR: null, anchorC: null };
+    const { anchorR, anchorC } = getSpawnAnchor(piece.shape);
+    drag = { piece, idx, anchorR, anchorC };
     buildGhost(piece);
+    renderBoard(piece.shape, anchorR, anchorC);
     positionGhost(touch.clientX, touch.clientY);
 }
 
