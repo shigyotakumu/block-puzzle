@@ -135,6 +135,17 @@ h1 {
     position: relative;
 }
 
+/* ── Line-ready highlight ── */
+@keyframes lineReady {
+    0%, 100% { filter: brightness(1.3) saturate(1.2); }
+    50%       { filter: brightness(2.2) saturate(1.8); }
+}
+.cell.line-ready {
+    animation: lineReady 0.55s ease-in-out infinite;
+    z-index: 1;
+    position: relative;
+}
+
 /* Clear animation */
 @keyframes clearFlash {
     0%   { transform: scale(1);    filter: brightness(1); }
@@ -588,6 +599,7 @@ let score = 0;
 let best  = 0;
 let lines = 0;
 let combo = 0;
+let gameColor = '#3498db';
 let scoreHistory = [];
 let candidates = [];
 let cells = [];
@@ -755,6 +767,7 @@ function startGame() {
     score  = 0;
     lines  = 0;
     combo  = 0;
+    gameColor = COLORS[Math.floor(Math.random() * COLORS.length)];
     $id('score').textContent = '0';
     $id('lines').textContent = '0';
     $id('overlay').classList.remove('show');
@@ -776,17 +789,31 @@ function beginGame() {
 function refillCandidates() {
     candidates = Array.from({length: 3}, () => ({
         shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        color: gameColor,
         used: false,
     }));
 }
 
 // ── Render board (3D via CSS class + custom property) ──
+function getLinesIfPlaced(shape, r, c) {
+    const rows = [], cols = [];
+    const test = board.map(row => [...row]);
+    shape.forEach(([dr, dc]) => {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) test[nr][nc] = 'x';
+    });
+    for (let i = 0; i < SIZE; i++) {
+        if (test[i].every(v => v !== null)) rows.push(i);
+        if (test.every(row => row[i] !== null)) cols.push(i);
+    }
+    return { rows, cols };
+}
+
 function renderBoard(previewShape = null, pr = null, pc = null) {
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
             const cell = cells[r][c];
-            cell.classList.remove('clearing');
+            cell.classList.remove('clearing', 'line-ready');
             if (!cell.classList.contains('placing')) {
                 if (board[r][c]) {
                     cell.classList.add('filled');
@@ -807,15 +834,20 @@ function renderBoard(previewShape = null, pr = null, pc = null) {
             if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) return;
             cells[nr][nc].classList.add('filled');
             if (board[nr][nc]) {
-                // 衝突: 赤で強調
                 cells[nr][nc].style.setProperty('--cell-color', '#ff2244');
                 cells[nr][nc].style.opacity = '0.92';
             } else {
-                // 空き: ピース色プレビュー
                 cells[nr][nc].style.setProperty('--cell-color', color);
                 cells[nr][nc].style.opacity = '0.55';
             }
         });
+
+        // 置いたときに消えるラインを光らせる
+        if (canPlace(previewShape, pr, pc)) {
+            const { rows, cols } = getLinesIfPlaced(previewShape, pr, pc);
+            rows.forEach(r => { for (let c = 0; c < SIZE; c++) cells[r][c].classList.add('line-ready'); });
+            cols.forEach(c => { for (let r = 0; r < SIZE; r++) cells[r][c].classList.add('line-ready'); });
+        }
     }
 }
 
